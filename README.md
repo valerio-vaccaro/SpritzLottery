@@ -47,8 +47,23 @@ pip install -r requirements.txt
 
 ### Starting the Application
 
-Run the Flask application:
+#### Option 1: Using the startup script (recommended)
+
+**Linux/macOS:**
 ```bash
+./start.sh
+```
+
+**Windows:**
+```cmd
+start.bat
+```
+
+#### Option 2: Manual start
+
+Activate the virtual environment and run:
+```bash
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 python app.py
 ```
 
