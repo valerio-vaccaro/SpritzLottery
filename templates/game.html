@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpritzLottery - Game {{ game_id }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 2rem 0;
+        }
+        .main-container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+        .header-section {
+            background: linear-gradient(135deg, #f7931a 0%, #ff9800 100%);
+            color: white;
+            padding: 2rem;
+            border-radius: 15px;
+            margin-bottom: 2rem;
+        }
+        .status-badge {
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.85rem;
+        }
+        .status-active { background: #28a745; color: white; }
+        .status-closed { background: #ffc107; color: #000; }
+        .status-finished { background: #6c757d; color: white; }
+        .card {
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 1.5rem;
+        }
+        .info-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .info-card ul {
+            list-style: none;
+            padding: 0;
+        }
+        .info-card li {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .info-card li:last-child {
+            border-bottom: none;
+        }
+        .info-card code {
+            background: rgba(0, 0, 0, 0.5);
+            color: #fff;
+            padding: 0.3rem 0.6rem;
+            border-radius: 5px;
+            font-weight: bold;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        .table {
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .table thead {
+            background: #f7931a;
+            color: white;
+        }
+        .winner-badge {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            padding: 1rem;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .btn-primary {
+            background: #f7931a;
+            border: none;
+            padding: 0.75rem 2rem;
+            font-weight: bold;
+            border-radius: 25px;
+        }
+        .btn-primary:hover {
+            background: #ff9800;
+        }
+        .winner-badge code {
+            background: rgba(0, 0, 0, 0.6);
+            color: #fff;
+            padding: 0.3rem 0.6rem;
+            border-radius: 5px;
+            font-weight: bold;
+            border: 1px solid rgba(255, 255, 255, 0.4);
+        }
+        .table code {
+            background: rgba(0, 0, 0, 0.1);
+            color: #000;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+        }
+        .header-section code {
+            background: rgba(0, 0, 0, 0.3);
+            color: #fff;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header-section">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1><i class="bi bi-currency-bitcoin"></i> SpritzLottery</h1>
+                    <p class="mb-0"><i class="bi bi-currency-bitcoin"></i> Target Block Height: <strong>{{ target_height }}</strong></p>
+                    <p class="mb-0">Game ID: <code>{{ game_id }}</code></p>
+                </div>
+                <span class="status-badge status-{{ status }}">
+                    {{ status | capitalize }}
+                </span>
+            </div>
+        </div>
+
+        <div class="main-container">
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <h3 class="card-title"><i class="bi bi-share"></i> Share This Game</h3>
+                            <p class="card-text">Scan the QR code with your smartphone to access this page:</p>
+                            <div id="qrcode" class="mb-3 d-flex justify-content-center"></div>
+                            <p class="text-muted small text-break">URL: <a href="{{ game_url }}" target="_blank">{{ game_url }}</a></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-card">
+                <h3><i class="bi bi-currency-bitcoin"></i> <i class="bi bi-info-circle"></i> Latest Block Information</h3>
+                {% if latest and latest[0] is not none %}
+                    <ul>
+                        <li><strong>Height:</strong> {{ latest[0] }}</li>
+                        <li><strong>Hash:</strong> <code>{% if latest[1] %}{{ latest[1] }}{% else %}N/A{% endif %}</code></li>
+                        <li><strong>Time:</strong> {% if latest[2] %}{{ latest[2] }}{% else %}N/A{% endif %}</li>
+                        <li><strong>Nonce:</strong> <code>{{ int_to_hex(latest[3]) if latest[3] is not none else 'N/A' }}</code></li>
+                    </ul>
+                    {% if latest[1] %}
+                    <div class="mt-3">
+                        <a href="https://blockstream.info/block/{{ latest[1] }}" target="_blank" class="btn btn-light btn-sm">
+                            <i class="bi bi-box-arrow-up-right"></i> View Block on Blockstream.info
+                        </a>
+                    </div>
+                    {% elif latest[0] %}
+                    <div class="mt-3">
+                        <a href="https://blockstream.info/block-height/{{ latest[0] }}" target="_blank" class="btn btn-light btn-sm">
+                            <i class="bi bi-box-arrow-up-right"></i> View Block on Blockstream.info
+                        </a>
+                    </div>
+                    {% endif %}
+                {% else %}
+                    <p class="mb-0">Unable to retrieve latest block information.</p>
+                {% endif %}
+            </div>
+
+            {% if status == 'active' %}
+                <div class="alert alert-success">
+                    <i class="bi bi-currency-bitcoin"></i> <i class="bi bi-check-circle"></i> <strong>The game is active!</strong> Submit your prediction now.
+                </div>
+                <a href="{{ url_for('game_guess', game_id=game_id) }}" class="btn btn-primary btn-lg mb-4">
+                    <i class="bi bi-currency-bitcoin"></i> <i class="bi bi-plus-circle"></i> Add/Update Your Prediction
+                </a>
+            {% elif status == 'closed' %}
+                <div class="alert alert-warning">
+                    <i class="bi bi-currency-bitcoin"></i> <i class="bi bi-hourglass-split"></i> <strong>Predictions are closed.</strong> Waiting for the target block.
+                </div>
+            {% else %}
+                <div class="winner-badge">
+                    <h2><i class="bi bi-currency-bitcoin"></i> <i class="bi bi-trophy"></i> Game Finished!</h2>
+                    <p class="mb-0"><i class="bi bi-currency-bitcoin"></i> Real Nonce: <code>{{ real_nonce_hex }}</code></p>
+                    <p class="mb-0">Block Hash: <code>{{ block_hash }}</code></p>
+                    <p class="mb-0">Block Time: {{ block_time }}</p>
+                    {% if block_hash %}
+                    <div class="mt-3">
+                        <a href="https://blockstream.info/block/{{ block_hash }}" target="_blank" class="btn btn-light btn-sm">
+                            <i class="bi bi-box-arrow-up-right"></i> View Block on Blockstream.info
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            {% endif %}
+
+            {% if guesses %}
+            <h2><i class="bi bi-currency-bitcoin"></i> <i class="bi bi-bar-chart"></i> Prediction Distribution</h2>
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <canvas id="distributionChart" style="max-height: 400px;"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <h2><i class="bi bi-currency-bitcoin"></i> <i class="bi bi-list-check"></i> Predictions</h2>
+            {% if guesses %}
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th><i class="bi bi-person"></i> Name</th>
+                            <th><i class="bi bi-hash"></i> Prediction (Hex)</th>
+                            <th><i class="bi bi-clock"></i> Timestamp</th>
+                            {% if status == 'finished' %}
+                                <th><i class="bi bi-arrows-angle-contract"></i> Distance</th>
+                            {% endif %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for guess in guesses %}
+                            <tr>
+                                <td><strong>{{ get_participant_emoji(guess[0]) }} {{ guess[0] }}</strong></td>
+                                <td><code>{{ guess[1] }}</code></td>
+                                <td>{{ guess[2] }}</td>
+                                {% if status == 'finished' %}
+                                    <td><span class="badge bg-info">{{ guess[3] }}</span></td>
+                                {% endif %}
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i> No predictions yet. Be the first to submit one!
+            </div>
+            {% endif %}
+
+            {% if status == 'finished' and guesses %}
+                <div class="mt-5">
+                    <h2><i class="bi bi-currency-bitcoin"></i> <i class="bi bi-trophy"></i> Final Leaderboard</h2>
+                    <div class="winner-badge">
+                        <h3><i class="bi bi-currency-bitcoin"></i> <i class="bi bi-star-fill"></i> Winner: {{ get_participant_emoji(winner) }} {{ winner }}</h3>
+                        <p class="mb-0"><i class="bi bi-currency-bitcoin"></i> Real Nonce: <code>{{ real_nonce_hex }}</code></p>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th><i class="bi bi-trophy"></i> Position</th>
+                                    <th><i class="bi bi-person"></i> Name</th>
+                                    <th><i class="bi bi-hash"></i> Prediction (Hex)</th>
+                                    <th><i class="bi bi-arrows-angle-contract"></i> Distance</th>
+                                    <th><i class="bi bi-clock"></i> Date/Time</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for guess in guesses %}
+                                {% set i = loop.index %}
+                                <tr {% if i == 1 %}class="table-success fw-bold"{% endif %}>
+                                    <td>
+                                        {% if i == 1 %}
+                                            <i class="bi bi-trophy-fill text-warning"></i> {{ i }}st
+                                        {% elif i == 2 %}
+                                            <i class="bi bi-award-fill text-secondary"></i> {{ i }}nd
+                                        {% elif i == 3 %}
+                                            <i class="bi bi-award-fill text-warning"></i> {{ i }}rd
+                                        {% else %}
+                                            {{ i }}th
+                                        {% endif %}
+                                    </td>
+                                    <td><strong>{{ get_participant_emoji(guess[0]) }} {{ guess[0] }}</strong></td>
+                                    <td><code>{{ guess[1] }}</code></td>
+                                    <td><span class="badge bg-info">{{ guess[3] }}</span></td>
+                                    <td>{{ guess[2] }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            {% endif %}
+
+            <div class="mt-4">
+                <a href="{{ url_for('index') }}" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to Home
+                </a>
+            </div>
+        </div>
+    </div>
+
+    {% if status in ['active', 'closed'] %}
+    <script>
+        setInterval(function() {
+            location.reload();
+        }, 10000);  // Refresh every 10 seconds
+    </script>
+    {% endif %}
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.rawgit.com/davidshimjs/qrcodejs/gh-pages/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script>
+        // Generate QR code when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            const qrElement = document.getElementById("qrcode");
+            if (qrElement) {
+                new QRCode(qrElement, {
+                    text: "{{ game_url }}",
+                    width: 200,
+                    height: 200,
+                    colorDark: "#000000",
+                    colorLight: "#ffffff",
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+            }
+
+            // Generate distribution chart
+            {% if guess_ints %}
+            const guessData = {{ guess_ints | tojson }};
+            if (guessData && guessData.length > 0) {
+                // Create bins for histogram (adaptive number of bins based on data)
+                const minNonce = 0;
+                const maxNonce = 0xFFFFFFFF;
+                const dataMin = Math.min(...guessData);
+                const dataMax = Math.max(...guessData);
+                const dataRange = dataMax - dataMin;
+                
+                // Use adaptive binning: more bins if data is spread out, fewer if concentrated
+                const numBins = Math.min(Math.max(10, Math.ceil(guessData.length / 2)), 30);
+                const binSize = Math.max(1, Math.ceil(dataRange / numBins));
+                
+                // Count values in each bin
+                const bins = Array(numBins).fill(0);
+                const binLabels = [];
+                
+                for (let i = 0; i < numBins; i++) {
+                    const binStart = dataMin + i * binSize;
+                    const binEnd = Math.min(binStart + binSize - 1, dataMax);
+                    const hexStart = '0x' + binStart.toString(16).toUpperCase().padStart(8, '0');
+                    const hexEnd = '0x' + binEnd.toString(16).toUpperCase().padStart(8, '0');
+                    binLabels.push(hexStart + ' - ' + hexEnd);
+                }
+                
+                guessData.forEach(value => {
+                    const binIndex = Math.min(Math.floor((value - dataMin) / binSize), numBins - 1);
+                    if (binIndex >= 0 && binIndex < numBins) {
+                        bins[binIndex]++;
+                    }
+                });
+                
+                const ctx = document.getElementById('distributionChart');
+                if (ctx) {
+                    new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: binLabels,
+                            datasets: [{
+                                label: 'Number of Predictions',
+                                data: bins,
+                                backgroundColor: 'rgba(247, 147, 26, 0.5)',
+                                borderColor: 'rgba(247, 147, 26, 1)',
+                                borderWidth: 2
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: true,
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    ticks: {
+                                        stepSize: 1
+                                    },
+                                    title: {
+                                        display: true,
+                                        text: 'Number of Predictions'
+                                    }
+                                },
+                                x: {
+                                    title: {
+                                        display: true,
+                                        text: 'Nonce Range'
+                                    },
+                                    ticks: {
+                                        maxRotation: 45,
+                                        minRotation: 45
+                                    }
+                                }
+                            },
+                            plugins: {
+                                legend: {
+                                    display: true
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(context) {
+                                            return 'Predictions: ' + context.parsed.y;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+            }
+            {% endif %}
+        });
+    </script>
+</body>
+</html>

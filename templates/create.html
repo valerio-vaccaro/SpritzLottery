@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>SpritzLottery - Create Game</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 2rem 0;
+        }
+        .main-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            padding: 2rem;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .header-section {
+            background: linear-gradient(135deg, #f7931a 0%, #ff9800 100%);
+            color: white;
+            padding: 2rem;
+            border-radius: 15px;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+        .form-control:focus {
+            border-color: #f7931a;
+            box-shadow: 0 0 0 0.2rem rgba(247, 147, 26, 0.25);
+        }
+        .btn-success {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            border: none;
+            padding: 0.75rem 2rem;
+            font-weight: bold;
+            border-radius: 25px;
+            transition: transform 0.2s;
+        }
+        .btn-success:hover {
+            transform: scale(1.05);
+        }
+        .info-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+        }
+        .info-box code {
+            background: rgba(0, 0, 0, 0.5);
+            color: #fff;
+            padding: 0.3rem 0.6rem;
+            border-radius: 5px;
+            font-weight: bold;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        .current-block-box {
+            background: linear-gradient(135deg, #f7931a 0%, #ff9800 100%);
+            color: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .current-block-box ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .current-block-box li {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .current-block-box li:last-child {
+            border-bottom: none;
+        }
+        .current-block-box code {
+            background: rgba(0, 0, 0, 0.6);
+            color: #fff;
+            padding: 0.3rem 0.6rem;
+            border-radius: 5px;
+            font-weight: bold;
+            border: 1px solid rgba(255, 255, 255, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header-section">
+            <h1><i class="bi bi-currency-bitcoin"></i> SpritzLottery</h1>
+            <h2><i class="bi bi-plus-circle"></i> Create New Game</h2>
+            <p class="mb-0"><i class="bi bi-currency-bitcoin"></i> Set a target block height and start predicting!</p>
+        </div>
+
+        <div class="main-card">
+            <div class="current-block-box">
+                <h3><i class="bi bi-currency-bitcoin"></i> <i class="bi bi-info-circle"></i> Current Block Information</h3>
+                {% if latest and latest[0] is not none %}
+                    <ul>
+                        <li><strong>Height:</strong> {{ latest[0] }}</li>
+                        <li><strong>Hash:</strong> <code>{% if latest[1] %}{{ latest[1] }}{% else %}N/A{% endif %}</code></li>
+                        <li><strong>Time:</strong> {% if latest[2] %}{{ latest[2] }}{% else %}N/A{% endif %}</li>
+                        <li><strong>Nonce:</strong> <code>{{ int_to_hex(latest[3]) if latest[3] is not none else 'N/A' }}</code></li>
+                    </ul>
+                    {% if latest[1] %}
+                    <div class="mt-3">
+                        <a href="https://blockstream.info/block/{{ latest[1] }}" target="_blank" class="btn btn-light btn-sm">
+                            <i class="bi bi-box-arrow-up-right"></i> View Block on Blockstream.info
+                        </a>
+                    </div>
+                    {% elif latest[0] %}
+                    <div class="mt-3">
+                        <a href="https://blockstream.info/block-height/{{ latest[0] }}" target="_blank" class="btn btn-light btn-sm">
+                            <i class="bi bi-box-arrow-up-right"></i> View Block on Blockstream.info
+                        </a>
+                    </div>
+                    {% endif %}
+                {% else %}
+                    <p class="mb-0">Unable to retrieve current block information.</p>
+                {% endif %}
+            </div>
+
+            <form method="POST">
+                <div class="mb-4">
+                    <label class="form-label fw-bold">
+                        <i class="bi bi-bullseye"></i> Target Block Height
+                    </label>
+                    <input type="number" name="target_height" class="form-control form-control-lg" required
+                           placeholder="e.g. {{ (latest[0] or 0) + 10 }}">
+                    <small class="form-text text-muted mt-2">
+                        <i class="bi bi-info-circle"></i> Must be at least 2 blocks in the future (current: {{ latest[0] if latest and latest[0] is not none else 'N/A' }})
+                    </small>
+                </div>
+                <button type="submit" class="btn btn-success w-100 btn-lg">
+                    <i class="bi bi-check-circle"></i> Create Game
+                </button>
+            </form>
+
+            <div class="info-box">
+                <strong><i class="bi bi-info-circle"></i> Valid Nonce Range:</strong><br>
+                From <code>{{ nonce_min }}</code> to <code>{{ nonce_max }}</code>
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+              {% if messages %}
+                {% for category, msg in messages %}
+                  <div class="alert alert-{{ 'danger' if category == 'danger' else 'success' }} mt-3 alert-dismissible fade show" role="alert">
+                    <i class="bi bi-{{ 'exclamation-triangle' if category == 'danger' else 'check-circle' }}"></i> {{ msg }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                  </div>
+                {% endfor %}
+              {% endif %}
+            {% endwith %}
+        </div>
+
+        <div class="text-center mt-4">
+            <a href="{{ url_for('index') }}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> Back to Home
+            </a>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
