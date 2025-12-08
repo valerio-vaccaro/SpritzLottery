@@ -235,7 +235,7 @@ def create_game():
         except:
             flash("Error creating the game.", "danger")
     latest = get_latest_block_info()
-    current_height = latest[0] if latest and latest[0] is not none else 0
+    current_height = latest[0] if latest and latest[0] is not None else 0
     MAX_BLOCKS_AHEAD = 144 * 7  # One week (144 blocks per day * 7 days)
     max_target = current_height + MAX_BLOCKS_AHEAD
     return render_template('create.html', latest=latest,
