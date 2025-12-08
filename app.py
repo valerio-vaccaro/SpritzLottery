@@ -13,9 +13,13 @@ import threading
 import time
 import uuid
 import re
+import os
 
 app = Flask(__name__)
 app.secret_key = 'supersecretkey'  # per flash messages
+
+# Get domain from environment variable, default to production URL
+DOMAIN = os.environ.get('SPRITZLOTTERY_DOMAIN', 'https://lottery.satoshispritz.it')
 
 # Range nonce Bitcoin (32 bit)
 NONCE_MIN = 0
@@ -182,7 +186,13 @@ threading.Thread(target=check_games, daemon=True).start()
 def index():
     conn = sqlite3.connect('games.db')
     c = conn.cursor()
-    c.execute("SELECT game_id, target_height, status FROM games ORDER BY target_height DESC")
+    # Get games with prediction count
+    c.execute('''SELECT g.game_id, g.target_height, g.status, 
+                        COUNT(gu.name) as prediction_count
+                 FROM games g
+                 LEFT JOIN guesses gu ON g.game_id = gu.game_id
+                 GROUP BY g.game_id, g.target_height, g.status
+                 ORDER BY g.target_height DESC''')
     games = c.fetchall()
     
     # Get global leaderboard: all participants from finished games, ordered by distance
@@ -207,8 +217,12 @@ def create_game():
         try:
             target = int(request.form['target_height'])
             current = get_current_block_height() or 0
+            MAX_BLOCKS_AHEAD = 144 * 7  # One week (144 blocks per day * 7 days)
+            
             if target <= current + 1:
                 flash("The height must be at least 2 blocks in the future!", "danger")
+            elif target > current + MAX_BLOCKS_AHEAD:
+                flash(f"The target height cannot be more than {MAX_BLOCKS_AHEAD} blocks ({MAX_BLOCKS_AHEAD // 144} days) in the future! Maximum allowed: {current + MAX_BLOCKS_AHEAD}", "danger")
             else:
                 game_id = str(uuid.uuid4())[:8]  # Short ID
                 conn = sqlite3.connect('games.db')
@@ -221,9 +235,14 @@ def create_game():
         except:
             flash("Error creating the game.", "danger")
     latest = get_latest_block_info()
+    current_height = latest[0] if latest and latest[0] is not none else 0
+    MAX_BLOCKS_AHEAD = 144 * 7  # One week (144 blocks per day * 7 days)
+    max_target = current_height + MAX_BLOCKS_AHEAD
     return render_template('create.html', latest=latest,
                            nonce_min=int_to_hex(NONCE_MIN),
-                           nonce_max=int_to_hex(NONCE_MAX))
+                           nonce_max=int_to_hex(NONCE_MAX),
+                           max_target=max_target,
+                           max_blocks_ahead=MAX_BLOCKS_AHEAD)
 
 @app.route('/game/<game_id>', methods=['GET'])
 def game(game_id):
@@ -256,8 +275,8 @@ def game(game_id):
     conn.close()
     latest = get_latest_block_info()
     
-    # Generate full URL for QR code
-    game_url = url_for('game', game_id=game_id, _external=True)
+    # Generate full URL for QR code using domain from environment variable
+    game_url = f"{DOMAIN}{url_for('game', game_id=game_id)}"
 
     return render_template('game.html',
                            game_id=game_id,
@@ -290,7 +309,8 @@ def game_guess(game_id):
         return redirect(url_for('game', game_id=game_id))
 
     if request.method == 'POST':
-        name = request.form['name'].strip()
+        # Normalize name: lowercase and remove all spaces
+        name = request.form['name'].strip().lower().replace(' ', '')
         hex_guess = request.form['guess'].strip()
 
         if not name:

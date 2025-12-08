@@ -129,10 +129,16 @@
                         <i class="bi bi-bullseye"></i> Target Block Height
                     </label>
                     <input type="number" name="target_height" class="form-control form-control-lg" required
-                           placeholder="e.g. {{ (latest[0] or 0) + 10 }}">
+                           placeholder="e.g. {{ (latest[0] or 0) + 10 }}"
+                           min="{{ (latest[0] or 0) + 2 }}"
+                           max="{{ max_target }}">
                     <small class="form-text text-muted mt-2">
                         <i class="bi bi-info-circle"></i> Must be at least 2 blocks in the future (current: {{ latest[0] if latest and latest[0] is not none else 'N/A' }})
                     </small>
+                    <div class="alert alert-info mt-3" role="alert">
+                        <i class="bi bi-clock-history"></i> <strong>Time Limit:</strong> The target block height cannot be more than <strong>{{ max_blocks_ahead }} blocks</strong> (approximately <strong>{{ max_blocks_ahead // 144 }} days</strong>) in the future. Maximum allowed height: <strong>{{ max_target }}</strong>.
+                        <br><small class="text-muted">This limit ensures games finish within a reasonable timeframe. Bitcoin produces approximately 144 blocks per day (one block every ~10 minutes).</small>
+                    </div>
                 </div>
                 <button type="submit" class="btn btn-success w-100 btn-lg">
                     <i class="bi bi-check-circle"></i> Create Game

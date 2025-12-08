@@ -167,6 +167,7 @@
                             <th><i class="bi bi-hash"></i> Game ID</th>
                             <th><i class="bi bi-bullseye"></i> Target Height</th>
                             <th><i class="bi bi-flag"></i> Status</th>
+                            <th><i class="bi bi-people"></i> Predictions</th>
                             <th><i class="bi bi-eye"></i> Action</th>
                         </tr>
                     </thead>
@@ -179,6 +180,9 @@
                                     <span class="status-badge status-{{ game[2] }}">
                                         {{ game[2] | capitalize }}
                                     </span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-secondary">{{ game[3] }}</span>
                                 </td>
                                 <td>
                                     <a href="{{ url_for('game', game_id=game[0]) }}" class="btn btn-sm btn-info">
