@@ -24,9 +24,15 @@ if errorlevel 1 (
     pip install -r requirements.txt
 )
 
+REM Set default Onion URL if not already set
+if not defined ONION_URL (
+    set ONION_URL=http://spritzlottery.onion
+)
+
 REM Start the Flask application
 echo Starting SpritzLottery...
 echo Application will be available at http://localhost:5000
+echo Onion URL: %ONION_URL%
 echo Press Ctrl+C to stop the server
 echo.
 

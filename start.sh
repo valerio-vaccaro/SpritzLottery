@@ -35,10 +35,14 @@ fi
 # Set default domain if not already set
 export SPRITZLOTTERY_DOMAIN="${SPRITZLOTTERY_DOMAIN:-https://lottery.satoshispritz.it}"
 
+# Set default Onion URL if not already set
+export ONION_URL="${ONION_URL:-http://spritzlottery.onion}"
+
 # Start the Flask application
 echo "Starting SpritzLottery..."
 echo "Application will be available at http://localhost:5000"
 echo "Domain for QR codes: $SPRITZLOTTERY_DOMAIN"
+echo "Onion URL: $ONION_URL"
 echo "Press Ctrl+C to stop the server"
 echo ""
 

@@ -21,6 +21,8 @@ app.secret_key = 'supersecretkey'  # per flash messages
 
 # Get domain from environment variable, default to production URL
 DOMAIN = os.environ.get('SPRITZLOTTERY_DOMAIN', 'https://lottery.satoshispritz.it')
+# Get Onion URL from environment variable, default to spritzlottery.onion
+ONION_URL = os.environ.get('ONION_URL', 'http://spritzlottery.onion')
 
 # Range nonce Bitcoin (32 bit)
 NONCE_MIN = 0
@@ -224,7 +226,8 @@ def index():
     latest = get_latest_block_info()
     return render_template('index.html', games=games, latest=latest, leaderboard=leaderboard,
                            nonce_min=int_to_hex(NONCE_MIN),
-                           nonce_max=int_to_hex(NONCE_MAX))
+                           nonce_max=int_to_hex(NONCE_MAX),
+                           onion_url=ONION_URL)
 
 @app.route('/create', methods=['GET', 'POST'])
 def create_game():
