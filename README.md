@@ -9,7 +9,8 @@ SpritzLottery is a web application that allows users to create prediction games 
 ### Features
 
 - 🎮 **Create Games**: Set a target block height and start a new prediction game
-- 📊 **Submit Predictions**: Participants can submit their nonce predictions (hexadecimal format)
+- 🔐 **PIN Protection**: Secure PIN system to control who can submit predictions
+- 📊 **Submit Predictions**: Participants can submit their nonce predictions (hexadecimal format) with PIN verification
 - 📈 **Real-time Updates**: Automatic refresh for active games
 - 📱 **QR Code Sharing**: Share games easily via QR codes
 - 📊 **Distribution Charts**: Visual representation of prediction distribution
@@ -74,14 +75,20 @@ The application will be available at `http://localhost:5000` (or `http://127.0.0
 1. Navigate to the home page
 2. Click "Create New Game"
 3. Enter a target block height (must be at least 2 blocks in the future)
-4. The game will be created and you'll be redirected to the game page
+4. **Enter a PIN** (minimum 4 characters) - this PIN will be required for all predictions
+5. The game will be created and you'll be redirected to the game page
+
+**⚠️ Important**: The PIN is hashed and stored securely. **Save your PIN** - it will NOT be shown again after creation! You'll need to share it with participants who want to submit predictions.
 
 ### Submitting Predictions
 
 1. Go to a game page (must be in "active" status)
 2. Click "Add/Update Your Prediction"
-3. Enter your name (unique identifier) and your nonce prediction
-4. Submit the form
+3. **Enter the game PIN** (obtained from the game creator)
+4. Enter your name (unique identifier) and your nonce prediction
+5. Submit the form
+
+**Note**: The PIN is required to submit predictions. If you don't have the PIN, contact the game creator.
 
 **Nonce Format**: Accepts hexadecimal format with or without `0x` prefix, with or without padding:
 - `ffff`
@@ -121,6 +128,7 @@ SpritzLottery/
 - `real_nonce` (INTEGER): Actual nonce from the target block
 - `block_hash` (TEXT): Hash of the target block
 - `block_time` (TEXT): Timestamp of the target block
+- `pin_hash` (TEXT): SHA256 hash of the game PIN (for security)
 
 ### Guesses Table
 - `game_id` (TEXT): Foreign key to games
@@ -146,6 +154,21 @@ A background thread runs every 60 seconds to:
 - Close games when approaching target block
 - Finalize games when target block is mined
 - Calculate distances for all predictions
+
+## 🔐 Security
+
+### PIN System
+
+- **PIN Creation**: When creating a game, you must set a PIN (minimum 4 characters)
+- **PIN Storage**: PINs are hashed using SHA256 before storage - the original PIN is never stored
+- **PIN Visibility**: The PIN is visible during entry but never shown again after game creation
+- **PIN Verification**: All predictions require the correct PIN to be submitted
+- **PIN Sharing**: Game creators must share the PIN with participants who want to submit predictions
+
+**Security Best Practices**:
+- Use a strong PIN (at least 8 characters recommended)
+- Share the PIN securely with trusted participants only
+- Never share the PIN publicly or in unsecured channels
 
 ## 🎨 Features Details
 
