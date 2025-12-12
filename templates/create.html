@@ -140,6 +140,20 @@
                         <br><small class="text-muted">This limit ensures games finish within a reasonable timeframe. Bitcoin produces approximately 144 blocks per day (one block every ~10 minutes).</small>
                     </div>
                 </div>
+                <div class="mb-4">
+                    <label class="form-label fw-bold">
+                        <i class="bi bi-lock"></i> PIN (Required for predictions)
+                    </label>
+                    <input type="text" name="pin" class="form-control form-control-lg" required
+                           placeholder="Enter a PIN (minimum 4 characters)"
+                           minlength="4">
+                    <small class="form-text text-muted mt-2">
+                        <i class="bi bi-exclamation-triangle"></i> <strong>Important:</strong> This PIN will be required for all predictions. Save it securely - it will NOT be shown again after creation!
+                    </small>
+                    <div class="alert alert-warning mt-3" role="alert">
+                        <i class="bi bi-shield-lock"></i> <strong>Security Notice:</strong> The PIN is hashed and stored securely. You will need this PIN to submit predictions for this game. Make sure to remember it or save it in a secure location.
+                    </div>
+                </div>
                 <button type="submit" class="btn btn-success w-100 btn-lg">
                     <i class="bi bi-check-circle"></i> Create Game
                 </button>

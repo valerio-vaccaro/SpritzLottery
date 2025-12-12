@@ -14,6 +14,7 @@ import time
 import uuid
 import re
 import os
+import hashlib
 
 app = Flask(__name__)
 app.secret_key = 'supersecretkey'  # per flash messages
@@ -135,13 +136,27 @@ def get_latest_block_info():
     except:
         return None, None, None, None
 
+# Hash PIN function
+def hash_pin(pin):
+    """Hash a PIN using SHA256"""
+    return hashlib.sha256(pin.encode()).hexdigest()
+
+def verify_pin(pin, pin_hash):
+    """Verify a PIN against its hash"""
+    return hash_pin(pin) == pin_hash
+
 # DB init
 def init_db():
     conn = sqlite3.connect('games.db')
     c = conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS games
                  (game_id TEXT PRIMARY KEY, target_height INTEGER, status TEXT,
-                  real_nonce INTEGER, block_hash TEXT, block_time TEXT)''')
+                  real_nonce INTEGER, block_hash TEXT, block_time TEXT, pin_hash TEXT)''')
+    # Add pin_hash column if it doesn't exist (for existing databases)
+    try:
+        c.execute('ALTER TABLE games ADD COLUMN pin_hash TEXT')
+    except sqlite3.OperationalError:
+        pass  # Column already exists
     c.execute('''CREATE TABLE IF NOT EXISTS guesses
                  (game_id TEXT, name TEXT, guess INTEGER, timestamp DATETIME, distance INTEGER,
                   PRIMARY KEY (game_id, name))''')
@@ -216,24 +231,33 @@ def create_game():
     if request.method == 'POST':
         try:
             target = int(request.form['target_height'])
+            pin = request.form.get('pin', '').strip()
             current = get_current_block_height() or 0
             MAX_BLOCKS_AHEAD = 144 * 7  # One week (144 blocks per day * 7 days)
             
-            if target <= current + 1:
+            if not pin:
+                flash("PIN is required!", "danger")
+            elif len(pin) < 4:
+                flash("PIN must be at least 4 characters long!", "danger")
+            elif target <= current + 1:
                 flash("The height must be at least 2 blocks in the future!", "danger")
             elif target > current + MAX_BLOCKS_AHEAD:
                 flash(f"The target height cannot be more than {MAX_BLOCKS_AHEAD} blocks ({MAX_BLOCKS_AHEAD // 144} days) in the future! Maximum allowed: {current + MAX_BLOCKS_AHEAD}", "danger")
             else:
                 game_id = str(uuid.uuid4())[:8]  # Short ID
+                pin_hash = hash_pin(pin)
                 conn = sqlite3.connect('games.db')
                 c = conn.cursor()
-                c.execute("INSERT INTO games (game_id, target_height, status) VALUES (?, ?, 'active')",
-                          (game_id, target))
+                c.execute("INSERT INTO games (game_id, target_height, status, pin_hash) VALUES (?, ?, 'active', ?)",
+                          (game_id, target, pin_hash))
                 conn.commit()
                 conn.close()
+                flash("Game created successfully! Remember your PIN - it will be needed for predictions.", "success")
                 return redirect(url_for('game', game_id=game_id))
-        except:
-            flash("Error creating the game.", "danger")
+        except ValueError:
+            flash("Invalid target height!", "danger")
+        except Exception as e:
+            flash(f"Error creating the game: {str(e)}", "danger")
     latest = get_latest_block_info()
     current_height = latest[0] if latest and latest[0] is not None else 0
     MAX_BLOCKS_AHEAD = 144 * 7  # One week (144 blocks per day * 7 days)
@@ -248,12 +272,12 @@ def create_game():
 def game(game_id):
     conn = sqlite3.connect('games.db')
     c = conn.cursor()
-    c.execute("SELECT target_height, status, real_nonce, block_hash, block_time FROM games WHERE game_id = ?", (game_id,))
+    c.execute("SELECT target_height, status, real_nonce, block_hash, block_time, pin_hash FROM games WHERE game_id = ?", (game_id,))
     game_data = c.fetchone()
     if not game_data:
         abort(404)
 
-    target_height, status, real_nonce, block_hash, block_time = game_data
+    target_height, status, real_nonce, block_hash, block_time, pin_hash = game_data
 
     # Recupera stime
     if status == 'finished':
@@ -297,24 +321,30 @@ def game(game_id):
 def game_guess(game_id):
     conn = sqlite3.connect('games.db')
     c = conn.cursor()
-    c.execute("SELECT target_height, status FROM games WHERE game_id = ?", (game_id,))
+    c.execute("SELECT target_height, status, pin_hash FROM games WHERE game_id = ?", (game_id,))
     game_data = c.fetchone()
     if not game_data:
         abort(404)
 
-    target_height, status = game_data
+    target_height, status, pin_hash = game_data
 
     if status != 'active':
         flash("The game is not active, you cannot add predictions!", "danger")
+        conn.close()
         return redirect(url_for('game', game_id=game_id))
 
     if request.method == 'POST':
         # Normalize name: lowercase and remove all spaces
         name = request.form['name'].strip().lower().replace(' ', '')
         hex_guess = request.form['guess'].strip()
+        pin = request.form.get('pin', '').strip()
 
         if not name:
             flash("Name is required!", "danger")
+        elif not pin:
+            flash("PIN is required!", "danger")
+        elif not verify_pin(pin, pin_hash):
+            flash("Invalid PIN! Please check your PIN and try again.", "danger")
         elif not re.match(r'^(0x)?[0-9a-fA-F]{1,8}$', hex_guess, re.IGNORECASE):
             flash("Invalid hexadecimal format! You can use 'ffff', '0xffff', '0000ffff', etc.", "danger")
         else:
@@ -327,6 +357,7 @@ def game_guess(game_id):
                              VALUES (?, ?, ?, ?, NULL)''', (game_id, name, guess_int, timestamp))
                 conn.commit()
                 flash("Prediction updated successfully!", "success")
+                conn.close()
                 return redirect(url_for('game', game_id=game_id))
 
     conn.close()
