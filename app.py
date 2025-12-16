@@ -117,15 +117,37 @@ def get_current_block_height():
         return None
 
 def get_block_info(height):
+    # First, check the cache/buffer table
+    conn = sqlite3.connect('games.db')
+    c = conn.cursor()
+    c.execute("SELECT nonce, block_hash, block_time FROM block_cache WHERE height = ?", (height,))
+    cached = c.fetchone()
+    
+    if cached:
+        nonce, block_hash, block_time_str = cached
+        conn.close()
+        # Convert string back to datetime
+        block_time = datetime.strptime(block_time_str, "%Y-%m-%d %H:%M:%S")
+        return nonce, block_hash, block_time
+    
+    # If not in cache, request from API
     try:
         r = requests.get(f'https://blockchain.info/block-height/{height}?format=json', timeout=10)
         block = r.json()['blocks'][0]
-        return (
-            block['nonce'],
-            block['hash'],
-            datetime.fromtimestamp(block['time'])
-        )
+        nonce = block['nonce']
+        block_hash = block['hash']
+        block_time = datetime.fromtimestamp(block['time'])
+        
+        # Save to cache
+        block_time_str = block_time.strftime("%Y-%m-%d %H:%M:%S")
+        c.execute('''INSERT OR REPLACE INTO block_cache (height, nonce, block_hash, block_time)
+                     VALUES (?, ?, ?, ?)''', (height, nonce, block_hash, block_time_str))
+        conn.commit()
+        conn.close()
+        
+        return nonce, block_hash, block_time
     except:
+        conn.close()
         return None, None, None
 
 def get_latest_block_info():
@@ -162,6 +184,8 @@ def init_db():
     c.execute('''CREATE TABLE IF NOT EXISTS guesses
                  (game_id TEXT, name TEXT, guess INTEGER, timestamp DATETIME, distance INTEGER,
                   PRIMARY KEY (game_id, name))''')
+    c.execute('''CREATE TABLE IF NOT EXISTS block_cache
+                 (height INTEGER PRIMARY KEY, nonce INTEGER, block_hash TEXT, block_time TEXT)''')
     conn.commit()
     conn.close()
 
@@ -169,6 +193,9 @@ init_db()
 
 # Background checker
 def check_games():
+    MAX_RETRIES = 5
+    RETRY_DELAY = 10  # seconds
+    
     while True:
         current = get_current_block_height()
         if not current:
