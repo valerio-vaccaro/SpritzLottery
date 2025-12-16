@@ -140,10 +140,14 @@ def get_block_info(height):
         
         # Save to cache
         block_time_str = block_time.strftime("%Y-%m-%d %H:%M:%S")
-        c.execute('''INSERT OR REPLACE INTO block_cache (height, nonce, block_hash, block_time)
-                     VALUES (?, ?, ?, ?)''', (height, nonce, block_hash, block_time_str))
-        conn.commit()
-        conn.close()
+        if nonce is not None:
+            c.execute('''INSERT OR REPLACE INTO block_cache (height, nonce, block_hash, block_time)
+                       VALUES (?, ?, ?, ?)''', (height, nonce, block_hash, block_time_str))
+            conn.commit()
+            conn.close()
+        else:
+            conn.close()
+            return None, None, None
         
         return nonce, block_hash, block_time
     except:
@@ -220,6 +224,29 @@ def check_games():
                     for name, guess in c.fetchall():
                         dist = abs(guess - nonce)
                         c.execute("UPDATE guesses SET distance = ? WHERE game_id = ? AND name = ?", (dist, game_id, name))
+        
+        # Retry logic for closed games with nonce N/A
+        c.execute("SELECT game_id, target_height FROM games WHERE status = 'closed' AND real_nonce IS NULL")
+        closed_games_no_nonce = c.fetchall()
+        
+        for game_id, target in closed_games_no_nonce:
+            # Retry to get block info with retry logic
+            nonce, hash_, time_ = None, None, None
+            for attempt in range(MAX_RETRIES):
+                nonce, hash_, time_ = get_block_info(target)
+                if nonce is not None:
+                    break
+                if attempt < MAX_RETRIES - 1:
+                    time.sleep(RETRY_DELAY)
+            
+            if nonce is not None:
+                time_str = time_.strftime("%Y-%m-%d %H:%M:%S")
+                c.execute('''UPDATE games SET real_nonce = ?, block_hash = ?, block_time = ?, status = 'finished'
+                             WHERE game_id = ?''', (nonce, hash_, time_str, game_id))
+                c.execute("SELECT name, guess FROM guesses WHERE game_id = ?", (game_id,))
+                for name, guess in c.fetchall():
+                    dist = abs(guess - nonce)
+                    c.execute("UPDATE guesses SET distance = ? WHERE game_id = ? AND name = ?", (dist, game_id, name))
         conn.commit()
         conn.close()
         time.sleep(60)
