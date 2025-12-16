@@ -137,19 +137,35 @@ def get_block_info(height):
         nonce = block['nonce']
         block_hash = block['hash']
         block_time = datetime.fromtimestamp(block['time'])
-        
+
         # Save to cache
         block_time_str = block_time.strftime("%Y-%m-%d %H:%M:%S")
+        nonce = None
         if nonce is not None:
             c.execute('''INSERT OR REPLACE INTO block_cache (height, nonce, block_hash, block_time)
                        VALUES (?, ?, ?, ?)''', (height, nonce, block_hash, block_time_str))
             conn.commit()
             conn.close()
+            return nonce, block_hash, block_time
         else:
-            conn.close()
-            return None, None, None
-        
-        return nonce, block_hash, block_time
+            # try to get same info from mempool.space
+            # Get the block hash from mempool.space using the height
+            hash_resp = requests.get(f'https://mempool.space/api/block-height/{height}', timeout=10)
+            r = requests.get(f'https://mempool.space/api/block/{hash_resp.text}', timeout=10)
+            block = r.json()
+            nonce = block['nonce']
+            block_hash = block['id']
+            block_time = datetime.fromtimestamp(block['timestamp'])
+            block_time_str = block_time.strftime("%Y-%m-%d %H:%M:%S")
+            if nonce is not None:
+                c.execute('''INSERT OR REPLACE INTO block_cache (height, nonce, block_hash, block_time)
+                           VALUES (?, ?, ?, ?)''', (height, nonce, block_hash, block_time_str))
+                conn.commit()
+                conn.close()
+                return nonce, block_hash, block_time
+            else:
+                conn.close()
+                return None, None, None
     except:
         conn.close()
         return None, None, None
